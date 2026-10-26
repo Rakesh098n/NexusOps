@@ -12,14 +12,14 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 # Load .env file so GOOGLE_API_KEY is available
 load_dotenv()
 
-def get_llm(temperature: float = 0.3, model: str = "gemini-2.0-flash") -> ChatGoogleGenerativeAI:
+def get_llm(temperature: float = 0.3, model: str = "gemini-1.5-flash") -> ChatGoogleGenerativeAI:
     """
     Returns a configured Gemini LLM instance.
 
     Args:
         temperature: Controls creativity (0 = deterministic, 1 = creative).
                      Agents that need facts use low values; critic uses higher.
-        model:       Gemini model name. Defaults to gemini-2.0-flash (fast & free).
+        model:       Gemini model name. Defaults to gemini-1.5-flash (stable & free).
 
     Returns:
         ChatGoogleGenerativeAI instance ready to use with LangChain.

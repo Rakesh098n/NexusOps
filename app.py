@@ -265,7 +265,7 @@ st.divider()
 col1, col2, col3, col4 = st.columns(4)
 with col1: st.metric("🤖 Active Agents", "4", "LangGraph orchestrated")
 with col2: st.metric("🗄️ Database Tables", "4", "sales · products · customers · inventory")
-with col3: st.metric("🧠 LLM Model", "Gemini 2.0 Flash", "Free tier")
+with col3: st.metric("🧠 LLM Model", "Gemini 1.5 Flash", "Free tier")
 with col4: st.metric("🔗 Integrations", "Power Automate", "Optional webhook")
 
 st.divider()
@@ -426,7 +426,7 @@ if run_clicked and question.strip():
     st.markdown(
         f'<div style="text-align:center;color:#475569;font-size:0.85rem">'
         f'⏱ Total analysis time: <strong style="color:#6366f1">{elapsed}s</strong> · '
-        f'4 agents · Gemini 2.0 Flash · LangGraph StateGraph'
+        f'4 agents · Gemini 1.5 Flash · LangGraph StateGraph'
         f'</div>',
         unsafe_allow_html=True
     )

@@ -4,7 +4,7 @@
 
 ![Python](https://img.shields.io/badge/Python-3.11+-blue?logo=python)
 ![LangGraph](https://img.shields.io/badge/LangGraph-0.2-purple)
-![Gemini](https://img.shields.io/badge/Gemini_AI-2.0_Flash-orange?logo=google)
+![Gemini](https://img.shields.io/badge/Gemini_AI-1.5_Flash-orange?logo=google)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.40-red?logo=streamlit)
 ![SQLite](https://img.shields.io/badge/SQLite-3-green?logo=sqlite)
 
@@ -191,7 +191,7 @@ Your flow can then: send an email, post to Teams, update SharePoint, create a ta
 | Python | 3.11+ | Core language |
 | LangGraph | 0.2 | Agent orchestration (StateGraph) |
 | LangChain | 0.3 | LLM abstractions & message types |
-| Google Gemini | 2.0-flash | LLM backbone (free tier) |
+| Google Gemini | 1.5-flash | LLM backbone (free tier) |
 | Streamlit | 1.40 | Web UI |
 | SQLite | 3 | Business data store (demo) |
 | Pandas | 2.0 | Data manipulation |
