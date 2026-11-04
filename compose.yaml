@@ -1,0 +1,22 @@
+services:
+  nexusops:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-20b}
+      NEXUSOPS_DEMO_MODE: ${NEXUSOPS_DEMO_MODE:-true}
+      NEXUSOPS_ADMIN_USERNAME: ${NEXUSOPS_ADMIN_USERNAME:-}
+      NEXUSOPS_ADMIN_PASSWORD: ${NEXUSOPS_ADMIN_PASSWORD:-}
+      SESSION_SECRET: ${SESSION_SECRET:-}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    volumes:
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s

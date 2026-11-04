@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: nexusops-decision-intelligence
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    envVars:
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: NEXUSOPS_DEMO_MODE
+        value: "false"
+      - key: NEXUSOPS_ADMIN_USERNAME
+        sync: false
+      - key: NEXUSOPS_ADMIN_PASSWORD
+        sync: false
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-20b
+      - key: GROQ_API_KEY
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true

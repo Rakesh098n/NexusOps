@@ -1,208 +1,241 @@
-# 🧠 NexusOps — Multi-Agent Business Decision Intelligence
+# NexusOps
 
-> A production-grade multi-agent AI system where specialized agents collaborate, debate, and deliver actionable business recommendations using real data.
+NexusOps is a business decision-support demo. Its React web workspace and
+Streamlit app analyze a seeded SQLite database using deterministic
+local analytics or a Groq-backed LangGraph workflow. Results are historical
+sample data, not live operational advice.
 
-![Python](https://img.shields.io/badge/Python-3.11+-blue?logo=python)
-![LangGraph](https://img.shields.io/badge/LangGraph-0.2-purple)
-![Gemini](https://img.shields.io/badge/Gemini_AI-1.5_Flash-orange?logo=google)
-![Streamlit](https://img.shields.io/badge/Streamlit-1.40-red?logo=streamlit)
-![SQLite](https://img.shields.io/badge/SQLite-3-green?logo=sqlite)
+## What it does
 
----
+- Answers inventory, customer revenue, regional performance, and sales questions.
+- Shows the read-only evidence used to produce an answer.
+- Lets Admins and Managers model inventory reorder quantities under adjustable
+  supplier lead-time and safety-stock assumptions.
+- Offers a four-step analyst, research, critic, and action workflow.
+- Requires a username and password before showing the workspace or protected API
+  data.
+- Provides three business workspace roles with server-enforced least-privilege access and
+  an administrator account directory.
+- Supports an optional Power Automate HTTP webhook when explicitly configured.
 
-## 🎯 What is NexusOps?
+## Architecture
 
-NexusOps is a **multi-agent business intelligence system** where four specialised AI agents work in a collaborative pipeline to answer complex business questions:
-
-| Agent | Role | Colour |
-|-------|------|--------|
-| 📊 **Data Analyst** | Queries the business database (SQL), returns facts & numbers | Cyan |
-| 🔍 **Research Agent** | Adds business context, root-cause hypotheses, industry patterns | Purple |
-| ⚔️ **Critic Agent** | Challenges weak reasoning, finds data gaps, rates confidence | Amber |
-| 🚀 **Action Agent** | Synthesises final recommendation + triggers Power Automate | Green |
-
-The agents are orchestrated using **LangGraph StateGraph** — a directed acyclic graph (DAG) where each node is a pure function and state flows immutably between them.
-
----
-
-## 🏗️ Architecture
-
-```
-User Question
-     │
-     ▼
-[LangGraph StateGraph]
-     │
-     ├─► Node 1: Data Analyst ──── SQL → SQLite ──► findings
-     │
-     ├─► Node 2: Research Agent ── LLM context ──► insights
-     │
-     ├─► Node 3: Critic Agent ──── challenges ───► critique
-     │
-     └─► Node 4: Action Agent ──── synthesises ──► recommendation
-                                                      │
-                                                      └─► Power Automate (optional)
+```text
+Browser (React/Vite) or Streamlit
+                 │
+       FastAPI API and signed session
+                 │
+         Analysis service
+          ┌──────┴──────┐
+          │             │
+      No Groq key     Groq configured
+      Local SQL       LangGraph StateGraph
+      analytics       Analyst → Research
+          │           → Critic → Action
+          └──────┬──────┘
+                 │
+       Read-only sample SQLite
 ```
 
-### Why Multi-Agent instead of one big LLM prompt?
+In the Groq workflow, the Data Analyst asks Groq for a query and interprets its
+results. The SQL executor accepts only `SELECT`/`WITH ... SELECT` statements,
+uses a read-only SQLite connection, and installs a SQLite authorizer that
+denies writes and schema changes. An unsafe generated statement is not executed
+and is reported as an error. The Research Agent adds context, the Critic calls
+out uncertainty and data limitations, and the Action Agent synthesizes a
+recommendation. Inventory recommendations use deterministic sample-database
+facts so a below-threshold result cannot turn into a generic `PROCEED`.
 
-| Single LLM | Multi-Agent (NexusOps) |
-|-----------|----------------------|
-| One prompt does everything | Each agent has a focused role |
-| Hard to debug failures | Clear responsibility per agent |
-| Overconfident outputs | Critic agent reduces hallucinations |
-| Hard to upgrade | Swap one agent without touching others |
-| No specialisation | Data agent is "factual", critic is "sceptical" |
+The app falls back to local analytics if `GROQ_API_KEY` is absent or a Groq
+request fails, and labels that mode in the UI. The primary web UI is React/Vite
+served by FastAPI; `app.py` provides a full Streamlit interface using the same
+accounts, role checks, analysis workflow, and sample database.
 
----
+The generated SQL is executed server-side but is not shown in the employee or
+manager-facing findings. They receive the measured result rows and concise
+interpretation instead.
 
-## 📁 Project Structure
+The Performance workspace includes an inventory what-if planner. It estimates
+target stock as average daily demand multiplied by lead-time plus safety-buffer
+days, then subtracts on-hand and on-order units. This is a planning estimate
+from the historical sample snapshot, not an order or live forecast; verify
+current demand, purchase orders, pack sizes, and supplier constraints before
+acting.
 
-```
-NexusOps/
-├── app.py                        # Streamlit frontend (dark premium UI)
-├── agents/
-│   ├── data_analyst.py           # SQL query + factual interpretation
-│   ├── research_agent.py         # Business context & root-cause reasoning
-│   ├── critic_agent.py           # Adversarial review (reduces hallucinations)
-│   └── action_agent.py           # Final recommendation + Power Automate
-├── graph/
-│   └── workflow.py               # LangGraph StateGraph orchestration
-├── data/
-│   ├── seed_database.py          # Creates + seeds SQLite with demo data
-│   └── sample_business.db        # Auto-generated (git-ignored by default)
-├── utils/
-│   ├── llm.py                    # Gemini API factory
-│   └── tools.py                  # SQL runner, schema inspector, PA webhook
-├── requirements.txt
-├── .env.example                  # Template — copy to .env
-└── README.md
-```
+## Organization roles
 
----
+| Role | Workspace access |
+|---|---|
+| Admin / Owner | Decision desk, performance, read-only data explorer, and user/role administration |
+| Manager | Organization-wide decision briefs and aggregated performance/inventory oversight; no raw data explorer |
+| Employee | Aggregated sales performance only; no customer-level explorer, inventory detail, or analysis tool |
 
-## 🚀 Quick Start
+These are sample-wide permissions. The demo does **not** implement departments,
+row-level ownership, multiple companies/tenants, approval workflows, or an audit
+log. Before connecting company data, define each organization's data ownership,
+manager scope, retention, authorization, and approval policies. The role model
+should be extended to enforce those boundaries in the database queries and
+identity provider, not just in the navigation.
 
-### 1. Clone the repository
-```bash
-git clone https://github.com/Rakesh098n/NexusOps.git
-cd NexusOps
-```
+## Technology
 
-### 2. Create a virtual environment
-```bash
+| Technology | Purpose |
+|---|---|
+| Python 3.11+ | Application and analytics |
+| Groq (`langchain-groq` / `ChatGroq`) | Optional LLM provider |
+| LangChain | Message and model integration |
+| LangGraph | Four-agent workflow orchestration |
+| FastAPI + Uvicorn | Authenticated API, streaming, and static web hosting |
+| React + Vite | Primary browser interface |
+| Streamlit | Alternate authenticated business workspace |
+| SQLite + Pandas | Read-only sample data and deterministic analytics |
+
+## Run locally
+
+### 1. Install dependencies
+
+From the repository root:
+
+```powershell
 python -m venv .venv
-# Windows:
-.venv\Scripts\activate
-# macOS/Linux:
-source .venv/bin/activate
-```
-
-### 3. Install dependencies
-```bash
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+Push-Location frontend
+npm ci
+npm run build
+Pop-Location
 ```
 
-### 4. Set up your Gemini API key
-```bash
-# Copy the template
-cp .env.example .env  # Windows: copy .env.example .env
+For macOS/Linux, activate with `source .venv/bin/activate`.
 
-# Edit .env and add your key:
-# GOOGLE_API_KEY=AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXX
+### 2. Configure credentials and Groq
 
-# Get a FREE key from: https://aistudio.google.com/app/apikey
+Copy `.env.example` to `.env`. With `NEXUSOPS_DEMO_MODE=true`, the demo accounts
+are:
+
+```text
+Admin / Owner: admin / admin123
+Manager:       manager / manager123
+Employee:      employee / employee123
 ```
 
-### 5. Seed the database
-```bash
-python data/seed_database.py
+These are demo-only credentials. Before sharing, set
+`NEXUSOPS_DEMO_MODE=false`, configure `NEXUSOPS_ADMIN_USERNAME` and a unique
+`NEXUSOPS_ADMIN_PASSWORD` of at least 16 characters for the first admin, and
+set a random `SESSION_SECRET`. Administrators can then create accounts with
+12-character minimum passwords and assign roles in **User access**. Set
+`COOKIE_SECURE=true` when serving over HTTPS.
+
+To use the Groq multi-agent workflow, set `GROQ_API_KEY` to a key from
+[console.groq.com/keys](https://console.groq.com/keys). `GROQ_MODEL` defaults to
+`openai/gpt-oss-20b`. Without a valid key, local sample analytics remain
+available and the app explains that Groq is not configured.
+
+### 3. Seed and run
+
+The sample database is included. If it is missing or you intentionally want to
+recreate its data, run `python data/seed_database.py` (this resets the sample
+tables).
+
+Start the primary web app:
+
+```powershell
+python -m uvicorn server.main:app --reload --port 8000
 ```
 
-### 6. Run the app
-```bash
-streamlit run app.py
+Open [http://localhost:8000](http://localhost:8000) and sign in. The API health
+check is at `/api/health`.
+
+For frontend hot reload, run `npm run dev` in `frontend/`; Vite proxies API
+requests to port 8000. The Streamlit app is started with:
+
+```powershell
+python -m streamlit run app.py
 ```
 
-Open http://localhost:8501 in your browser.
+Open [http://localhost:8501](http://localhost:8501) for the Streamlit app.
+It has the same decision desk, performance view, admin-only data explorer,
+account directory, and role access as the web workspace. Both interfaces use
+the same SQLite-backed account store at `data/users.db`.
+Docker Compose mounts `./data` so locally provisioned accounts survive
+container restarts.
 
----
+## Deploy
 
-## 💬 Sample Questions to Try
+### Docker Compose
 
+Set deployment values in an untracked `.env`, including
+`NEXUSOPS_DEMO_MODE=false`, `NEXUSOPS_ADMIN_USERNAME`,
+`NEXUSOPS_ADMIN_PASSWORD`, and `SESSION_SECRET`. Set
+`COOKIE_SECURE=true` behind HTTPS. Add `GROQ_API_KEY` if desired, then run:
+
+```powershell
+docker compose up --build -d
 ```
-Why did sales drop in March for Nexus CRM Suite?
-Which products are at risk of stockout next month?
-Should we increase marketing budget for Analytics products?
-Who are our top 5 customers by revenue in 2025?
-Which region has the lowest sales performance?
-Compare revenue across product categories for Q4 2025.
+
+The app is served on port 8000 (or the configured `PORT`). Do not deploy the
+default demo credentials or expose the service over plain HTTP.
+
+### Render
+
+Create a Render Blueprint from this repository. The included `render.yaml`
+builds the Docker image, enables secure cookies, and generates a session secret.
+Provide `NEXUSOPS_ADMIN_USERNAME`, `NEXUSOPS_ADMIN_PASSWORD`, and (if using
+Groq) `GROQ_API_KEY` as Render secrets. For persistence, mount a durable disk at
+`/app/data`; without one, accounts created after bootstrap can be lost when an
+ephemeral service is replaced. The sample SQLite file is suitable only for the
+demo; production deployments need an approved, persistent data source and
+appropriate access controls. The current Render Blueprint uses a free
+ephemeral service and therefore is a demo deployment, not persistent
+organization hosting.
+
+## Reusing NexusOps for another business
+
+The agent pipeline can be reused where a business has structured, queryable
+data, but this repository is currently configured for the included sales,
+customer, and inventory schema. To adapt it, provide an approved read-only
+database connection, document its schema, replace the sample-specific local
+analytics and dashboard measures with business-approved KPIs, and define
+industry-specific actions and role/data scopes. Retail, distribution, SaaS,
+and manufacturing are plausible applications after that data and metric work;
+they are not plug-and-play connectors in the current demo.
+
+## Sample questions
+
+- **Which products are at risk of stockout?** The seeded inventory has
+  SecureShield Antivirus (12 in stock, threshold 40) and DevOps Pipeline Kit
+  (8 in stock, threshold 30), both with no units on order. The action is to
+  verify live stock and open orders, then reorder if still below threshold.
+- **Who are the top customers by revenue?** Returns the top ten from recorded
+  2025 sample sales; the first is Customer_084.
+- **Which region has the lowest sales performance?** East has the lowest
+  recorded revenue in the sample.
+- **Why did sales drop in March for Nexus CRM Suite?**
+- **Compare revenue across product categories for Q4 2025.**
+
+Inventory is a snapshot dated 2025-12-01 and sales are synthetic 2025 records.
+Verify current source data, demand, supplier lead times, and purchase orders
+before taking action.
+
+## Optional Power Automate
+
+Set `POWER_AUTOMATE_WEBHOOK_URL` to a flow's HTTP-trigger URL. The UI only offers
+the trigger when both Groq and the webhook are configured, and displays the
+HTTP result. Without a URL, no request is sent. Validate webhook permissions
+and approval requirements before enabling an external side effect.
+
+## Tests
+
+Run the Python suite from the repository root:
+
+```powershell
+python -m unittest discover -s tests
 ```
 
----
+Build the web UI:
 
-## 🔗 Power Automate Integration (Optional)
-
-1. In Power Automate, create a new flow → **"When an HTTP request is received"**
-2. Copy the generated webhook URL
-3. Add to your `.env`:  
-   ```
-   POWER_AUTOMATE_WEBHOOK_URL=https://prod-xx.westus.logic.azure.com/workflows/...
-   ```
-4. In the app, toggle **"Trigger Power Automate"** in the sidebar
-5. The Action Agent will POST this JSON to your flow:
-   ```json
-   {
-     "question": "...",
-     "decision": "PROCEED / HOLD / ESCALATE",
-     "confidence": 78,
-     "top_action": "...",
-     "urgency": "HIGH / MEDIUM / LOW"
-   }
-   ```
-
-Your flow can then: send an email, post to Teams, update SharePoint, create a task in Planner — anything.
-
----
-
-## 🎤 Interview Talking Points
-
-### 1. Why multi-agent instead of a single LLM?
-> "Each agent has a single responsibility — like microservices in software architecture. The Data Analyst never hallucinates numbers because it only runs real SQL. The Critic agent catches overconfident reasoning before it reaches the executive."
-
-### 2. How does LangGraph work?
-> "LangGraph uses a StateGraph — a DAG where each node is a pure function that reads from shared state and returns an update. State is immutable and merged by the graph. Adding a new agent is adding one node and one edge."
-
-### 3. Why is the Critic Agent critical?
-> "Research shows adversarial collaboration reduces overconfidence in AI outputs by 30-40%. In practice, without a critic, the Action Agent tends to be too confident about weak data. The Critic forces specificity and raises questions that executives would actually ask."
-
-### 4. How would you scale this to real enterprise data?
-> "The DB_PATH in `tools.py` is the only change needed to point at PostgreSQL or Snowflake via SQLAlchemy. The Research Agent would use RAG over a vector store (like Pinecone) of internal documents. Power Automate is already production-ready for enterprise."
-
-### 5. What are the limitations?
-> "The system runs sequentially, not in parallel — agents could run concurrently with LangGraph's parallel branching for 2-3x speedup. The Critic can't query new data itself — a more advanced version would give it SQL access too. LLM latency (3-8s per agent) is the main UX bottleneck."
-
----
-
-## 🛠️ Tech Stack
-
-| Technology | Version | Purpose |
-|-----------|---------|---------|
-| Python | 3.11+ | Core language |
-| LangGraph | 0.2 | Agent orchestration (StateGraph) |
-| LangChain | 0.3 | LLM abstractions & message types |
-| Google Gemini | 1.5-flash | LLM backbone (free tier) |
-| Streamlit | 1.40 | Web UI |
-| SQLite | 3 | Business data store (demo) |
-| Pandas | 2.0 | Data manipulation |
-| Power Automate | — | Enterprise workflow trigger |
-
----
-
-## 👤 Author
-
-**Rakesh** — GitHub: [@Rakesh098n](https://github.com/Rakesh098n)
-
----
-
-*Built as a portfolio project demonstrating multi-agent AI architecture for real-world business intelligence use cases.*
+```powershell
+Push-Location frontend
+npm run build
+Pop-Location
+```

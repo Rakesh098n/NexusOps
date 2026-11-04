@@ -11,23 +11,16 @@ Interview talking points:
 """
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from utils.llm import get_llm
+from utils.llm import get_response_text, invoke_with_fallback
 
 
-RESEARCH_SYSTEM_PROMPT = """You are the Research Agent for NexusOps — a business intelligence platform.
+RESEARCH_SYSTEM_PROMPT = """You are NexusOps' business-context analyst.
 
-Your role is to provide:
-1. Business context and likely root causes based on the data findings
-2. Industry best practices relevant to the situation
-3. Historical patterns or seasonal factors that explain the data
-4. Risks or opportunities that pure data analysis might miss
-
-Rules:
-- Base insights on the data analyst's findings + general business knowledge
-- Be specific and practical — not generic business jargon
-- Acknowledge uncertainty clearly (say "typically" or "research suggests" when appropriate)
-- Keep response under 350 words
-- Do NOT make a final recommendation — that is the Action Agent's job
+Use the original question and measured findings as scope. Add context only when
+it materially helps answer that question. Label hypotheses as hypotheses and
+never present general industry knowledge as a fact about this company. Do not
+repeat the data table, add unrelated frameworks, or make recommendations.
+If no useful context is supported, say so briefly. Maximum 120 words.
 """
 
 
@@ -48,26 +41,21 @@ def run_research_agent(question: str, analyst_findings: str) -> str:
         In a production system, this agent would use RAG (Retrieval Augmented
         Generation) to search company wikis, past reports, and market data.
     """
-    llm = get_llm(temperature=0.4)  # Slightly higher creativity for contextual reasoning
-
     prompt = f"""Business question: {question}
 
 Data Analyst findings:
 {analyst_findings}
 
-Based on these findings, provide:
-1. **Root Cause Hypotheses** – What business factors likely explain the data?
-2. **Industry Context** – What do standard business practices say about this situation?
-3. **Risk Factors** – What risks does this data signal?
-4. **Opportunities** – Any positive angles or quick wins visible in the data?
+Provide only context needed to answer the question. Reference a measured value
+when useful, label any explanation as an unverified hypothesis, and avoid
+generic best practices or unrelated opportunities. If the findings do not
+support an explanation, state that clearly."""
 
-Be specific, reference the actual numbers from the findings, and cite common business frameworks where relevant (e.g., seasonality, supply chain, customer lifecycle)."""
-
-    response = llm.invoke([
+    response = invoke_with_fallback([
         SystemMessage(content=RESEARCH_SYSTEM_PROMPT),
         HumanMessage(content=prompt)
-    ])
+    ], temperature=0.4)
 
     return f"""## 🔍 Research Agent Insights
 
-{response.content}"""
+{get_response_text(response)}"""

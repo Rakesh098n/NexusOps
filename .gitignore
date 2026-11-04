@@ -35,6 +35,8 @@ Thumbs.db
 
 # Database (optionally exclude if you want to ship with sample data)
 # data/sample_business.db
+data/users.db
+node_modules/
 
 # Logs
 *.log

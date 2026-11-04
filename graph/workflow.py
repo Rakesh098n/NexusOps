@@ -28,7 +28,7 @@ Interview talking points:
   - Adding a new agent = add a node + one edge. Zero impact on existing agents.
 """
 
-from typing import TypedDict, Optional
+from typing import Callable, TypedDict, Optional
 from langgraph.graph import StateGraph, END
 from utils.tools import get_database_schema
 from agents.data_analyst import run_data_analyst
@@ -182,7 +182,11 @@ def build_nexus_graph() -> StateGraph:
 # PUBLIC API
 # ─────────────────────────────────────────────────────────────────────────────
 
-def run_nexus_workflow(question: str, trigger_flow: bool = False) -> NexusState:
+def run_nexus_workflow(
+    question: str,
+    trigger_flow: bool = False,
+    progress_callback: Optional[Callable[[str, dict], None]] = None,
+) -> NexusState:
     """
     Run the full NexusOps multi-agent workflow on a business question.
 
@@ -202,7 +206,7 @@ def run_nexus_workflow(question: str, trigger_flow: bool = False) -> NexusState:
 
     # Build and run the graph
     nexus_graph = build_nexus_graph()
-    final_state = nexus_graph.invoke({
+    initial_state = {
         "question": question,
         "schema": schema,
         "analyst_findings": None,
@@ -212,6 +216,12 @@ def run_nexus_workflow(question: str, trigger_flow: bool = False) -> NexusState:
         "power_automate_status": None,
         "trigger_flow": trigger_flow,
         "error": None,
-    })
+    }
+    final_state = dict(initial_state)
+    for update in nexus_graph.stream(initial_state, stream_mode="updates"):
+        for node_name, node_update in update.items():
+            final_state.update(node_update)
+            if progress_callback:
+                progress_callback(node_name, node_update)
 
     return final_state
