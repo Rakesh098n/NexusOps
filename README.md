@@ -5,6 +5,14 @@ Streamlit app analyze a seeded SQLite database using deterministic
 local analytics or a Groq-backed LangGraph workflow. Results are historical
 sample data, not live operational advice.
 
+## Live demo
+
+The deployed demo is available at
+[nexusops-decision-intelligence.onrender.com](https://nexusops-decision-intelligence.onrender.com).
+It requires an account; demo credentials are intentionally not published in
+this repository. The free instance may take a short time to wake after
+inactivity and uses synthetic sample data.
+
 ## What it does
 
 - Answers inventory, customer revenue, regional performance, and sales questions.
@@ -239,3 +247,14 @@ Push-Location frontend
 npm run build
 Pop-Location
 ```
+
+GitHub Actions runs the Python tests and frontend production build on pushes to
+`main` and on pull requests.
+
+## Contributing
+
+Bug reports and focused pull requests are welcome. For changes to analytics,
+include tests for the expected answer and data scope. For UI changes, preserve
+the role-based access rules and verify both light and dark themes. Do not
+include `.env` files, API keys, passwords, user databases, or real business
+data in issues or pull requests.
